@@ -5,8 +5,8 @@ import scala.concurrent.Future
 trait EntityRepository[T <: MarathonState[_, T]] extends StateMetrics {
   import mesosphere.util.ThreadPoolContext.context
 
-  def store: EntityStore[T]
-  def maxVersions: Option[Int]
+  protected def store: EntityStore[T]
+  protected def maxVersions: Option[Int]
 
   protected val ID_DELIMITER = ":"
 
