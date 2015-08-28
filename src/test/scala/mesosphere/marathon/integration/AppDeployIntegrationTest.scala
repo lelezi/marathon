@@ -12,7 +12,6 @@ import mesosphere.marathon.state.{ AppDefinition, Command, PathId }
 import org.scalatest.{ BeforeAndAfter, GivenWhenThen, Matchers }
 import org.slf4j.LoggerFactory
 import play.api.libs.json.JsArray
-import spray.httpx.UnsuccessfulResponseException
 
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
@@ -314,22 +313,18 @@ class AppDeployIntegrationTest
 
   test("kill all tasks of an App with scaling") {
     Given("a new app with multiple tasks")
-    val app = v2AppProxy(testBasePath / "tokill", "v1", instances = 2, withHealth = false)
+    val app = v2AppProxy(testBasePath / "tokill", "v1", instances = 1, withHealth = false)
     marathon.createAppV2(app).code should be (201)
     waitForEvent("deployment_success")
-    marathon.app(app.id).value.app.instances should be (2)
+    marathon.app(app.id).value.app.instances should be (1)
 
     When("all task of an app are killed")
     val result = marathon.killAllTasksAndScale(app.id)
-
     result.code should be (200)
     result.value.version should not be empty
 
-    waitForEventWith("status_update_event", _.info("taskStatus") == "TASK_KILLED")
-    waitForEventWith("status_update_event", _.info("taskStatus") == "TASK_KILLED")
-    waitForEvent("deployment_success")
-
     Then("All instances of the app get restarted")
+    waitForEvents("deployment_success", "status_update_event")()
     waitForTasks(app.id, 0)
     marathon.app(app.id).value.app.instances should be (0)
   }
