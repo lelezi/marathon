@@ -14,7 +14,9 @@ case class AppInfo(
   maybeTasks: Option[Seq[EnrichedTask]] = None,
   maybeCounts: Option[TaskCounts] = None,
   maybeDeployments: Option[Seq[Identifiable]] = None,
-  maybeLastTaskFailure: Option[TaskFailure] = None)
+  maybeLastTaskFailure: Option[TaskFailure] = None,
+  maybeTaskStats: Option[TaskStatsByVersion] = None
+)
 
 object AppInfo {
   sealed trait Embed
