@@ -4,8 +4,7 @@ import com.codahale.metrics.MetricRegistry
 import mesosphere.marathon.core.base.{ Clock, ConstantClock }
 import mesosphere.marathon.core.launcher.{ OfferProcessor, OfferProcessorConfig, TaskLauncher }
 import mesosphere.marathon.core.matcher.base.OfferMatcher
-import OfferMatcher.{ MatchedTasks, TaskLaunchSource, TaskWithSource }
-import mesosphere.marathon.core.matcher.base.OfferMatcher
+import mesosphere.marathon.core.matcher.base.OfferMatcher._
 import mesosphere.marathon.metrics.Metrics
 import mesosphere.marathon.state.Timestamp
 import mesosphere.marathon.{ MarathonSpec, MarathonTestHelper }
@@ -30,7 +29,7 @@ class OfferProcessorImplTest extends MarathonSpec {
 
     val deadline: Timestamp = clock.now() + 1.second
     when(offerMatcher.matchOffer(deadline, offer)).thenReturn(
-      Future.successful(MatchedTasks(offerId, tasksWithSource))
+      Future.successful(WithMatchedTasks(offerId, tasksWithSource))
     )
     when(taskLauncher.launchTasks(offerId, tasks)).thenReturn(true)
 
@@ -51,7 +50,7 @@ class OfferProcessorImplTest extends MarathonSpec {
 
     val deadline: Timestamp = clock.now() + 1.second
     when(offerMatcher.matchOffer(deadline, offer)).thenReturn(
-      Future.successful(MatchedTasks(offerId, tasksWithSource))
+      Future.successful(WithMatchedTasks(offerId, tasksWithSource))
     )
     when(taskLauncher.launchTasks(offerId, tasks)).thenReturn(false)
 
@@ -69,13 +68,13 @@ class OfferProcessorImplTest extends MarathonSpec {
 
     val deadline: Timestamp = clock.now() + 1.second
     when(offerMatcher.matchOffer(deadline, offer)).thenReturn(
-      Future.successful(MatchedTasks(offerId, Seq.empty))
+      Future.successful(NoMatchedTasks(offerId, useDefaultFilter = false))
     )
 
     Await.result(offerProcessor.processOffer(offer), 1.second)
 
     verify(offerMatcher).matchOffer(deadline, offer)
-    verify(taskLauncher).declineOffer(offerId)
+    verify(taskLauncher).declineOffer(offerId, None)
   }
 
   test("match crashed => decline") {

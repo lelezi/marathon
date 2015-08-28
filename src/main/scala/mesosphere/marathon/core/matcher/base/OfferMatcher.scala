@@ -25,7 +25,19 @@ object OfferMatcher {
     * The launcher of message should setup some kind of timeout mechanism and handle
     * taskLaunchAccepted/taskLaunchRejected calls appropriately.
     */
-  case class MatchedTasks(offerId: OfferID, tasks: Seq[TaskWithSource])
+  sealed trait MatchedTasks {
+    def offerId: OfferID
+    def tasks: Seq[TaskWithSource]
+  }
+  object MatchedTasks {
+    def apply(offerId: OfferID, tasks: Seq[TaskWithSource]): MatchedTasks = {
+      if (tasks.isEmpty) NoMatchedTasks(offerId, false) else MatchedTasks(offerId, tasks)
+    }
+  }
+  case class WithMatchedTasks(offerId: OfferID, tasks: Seq[TaskWithSource]) extends MatchedTasks
+  case class NoMatchedTasks(offerId: OfferID, useDefaultFilter: Boolean) extends MatchedTasks {
+    override def tasks: Seq[TaskWithSource] = Seq.empty
+  }
 
   trait TaskLaunchSource {
     def taskLaunchAccepted(taskInfo: TaskInfo)

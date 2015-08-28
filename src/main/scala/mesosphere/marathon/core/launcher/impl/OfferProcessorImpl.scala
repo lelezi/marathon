@@ -3,8 +3,7 @@ package mesosphere.marathon.core.launcher.impl
 import mesosphere.marathon.core.base.Clock
 import mesosphere.marathon.core.launcher.{ OfferProcessor, OfferProcessorConfig, TaskLauncher }
 import mesosphere.marathon.core.matcher.base.OfferMatcher
-import OfferMatcher.MatchedTasks
-import mesosphere.marathon.core.matcher.base.OfferMatcher
+import mesosphere.marathon.core.matcher.base.OfferMatcher.{ MatchedTasks, NoMatchedTasks, WithMatchedTasks }
 import mesosphere.marathon.metrics.{ MetricPrefixes, Metrics }
 import org.apache.mesos.Protos.Offer
 import org.slf4j.LoggerFactory
@@ -42,22 +41,19 @@ private[launcher] class OfferProcessorImpl(
       .recover {
         case NonFatal(e) =>
           log.error(s"error while matching '${offer.getId.getValue}'", e)
-          MatchedTasks(offer.getId, Seq.empty)
+          NoMatchedTasks(offer.getId, useDefaultFilter = true)
       }.map {
-        case MatchedTasks(offerId, tasks) =>
-          if (tasks.nonEmpty) {
-            if (taskLauncher.launchTasks(offerId, tasks.map(_.taskInfo))) {
-              log.debug("task launch successful for {}", offerId.getValue)
-              tasks.foreach(_.accept())
-            }
-            else {
-              log.warn("task launch rejected for {}", offerId.getValue)
-              tasks.foreach(_.reject("driver unavailable"))
-            }
+        case WithMatchedTasks(offerId, tasks) =>
+          if (taskLauncher.launchTasks(offerId, tasks.map(_.taskInfo))) {
+            log.debug("task launch successful for {}", offerId.getValue)
+            tasks.foreach(_.accept())
           }
           else {
-            taskLauncher.declineOffer(offerId)
+            log.warn("task launch rejected for {}", offerId.getValue)
+            tasks.foreach(_.reject("driver unavailable"))
           }
+        case NoMatchedTasks(offerId, true)  => taskLauncher.declineOffer(offerId)
+        case NoMatchedTasks(offerId, false) => taskLauncher.declineOffer(offerId, conf.declineOfferDuration.get)
       }
   }
 }

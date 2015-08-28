@@ -5,11 +5,10 @@ import akka.event.LoggingReceive
 import akka.pattern.pipe
 import mesosphere.marathon.core.base.Clock
 import mesosphere.marathon.core.matcher.base.OfferMatcher
-import OfferMatcher.{ MatchedTasks, TaskWithSource }
-import mesosphere.marathon.core.matcher.base.OfferMatcher
-import mesosphere.marathon.core.matcher.manager.{ OfferMatcherManagerConfig }
-import mesosphere.marathon.core.matcher.manager.impl.OfferMatcherManagerActor.OfferData
+import mesosphere.marathon.core.matcher.base.OfferMatcher.{ NoMatchedTasks, TaskWithSource }
 import mesosphere.marathon.core.matcher.base.util.ActorOfferMatcher
+import mesosphere.marathon.core.matcher.manager.OfferMatcherManagerConfig
+import mesosphere.marathon.core.matcher.manager.impl.OfferMatcherManagerActor.OfferData
 import mesosphere.marathon.state.Timestamp
 import mesosphere.marathon.tasks.ResourceUtil
 import org.apache.mesos.Protos.{ Offer, OfferID, Resource }
@@ -132,52 +131,56 @@ private class OfferMatcherManagerActor private (
       context.system.scheduler.scheduleOnce(
         clock.now().until(deadline),
         self,
-        OfferMatcher.MatchedTasks(offer.getId, Seq.empty))
+        OfferMatcher.NoMatchedTasks(offer.getId, useDefaultFilter = true))
 
       // process offer for the first time
       scheduleNextMatcherOrFinish(data)
   }
 
   private[this] def receiveMatchedTasks: Receive = {
-    case OfferMatcher.MatchedTasks(offerId, addedTasks) =>
-      def processAddedTasks(data: OfferData): OfferData = {
-        val dataWithTasks = try {
-          val (launchTasks, rejectedTasks) =
-            addedTasks.splitAt(Seq(launchTokens, addedTasks.size, conf.maxTasksPerOffer() - data.tasks.size).min)
+    case OfferMatcher.WithMatchedTasks(offerId, addedTasks) => processs(offerId, addedTasks)
+    case OfferMatcher.NoMatchedTasks(offerId, _)            => processs(offerId, Seq.empty)
+  }
 
-          rejectedTasks.foreach(_.reject("not enough launch tokens OR already scheduled sufficient tasks on offer"))
+  private[this] def processs(offerId: OfferID, addedTasks: Seq[TaskWithSource]): Unit = {
+    offerQueues.get(offerId) match {
+      case Some(data) =>
+        val nextData = processAddedTasks(offerId, addedTasks, data.copy(matchPasses = data.matchPasses + 1))
+        scheduleNextMatcherOrFinish(nextData)
 
-          val newData: OfferData = data.addTasks(launchTasks)
-          launchTokens -= launchTasks.size
-          newData
-        }
-        catch {
-          case NonFatal(e) =>
-            log.error(s"unexpected error processing tasks for ${offerId.getValue} from ${sender()}", e)
-            data
-        }
+      case None =>
+        addedTasks.foreach(_.reject(s"offer '${offerId.getValue}' already timed out"))
+    }
+  }
 
-        dataWithTasks.nextMatcherOpt match {
-          case Some((matcher, contData)) =>
-            val contDataWithActiveMatcher =
-              if (addedTasks.nonEmpty) contData.addMatcher(matcher)
-              else contData
-            offerQueues += offerId -> contDataWithActiveMatcher
-            contDataWithActiveMatcher
-          case None =>
-            log.warning("Got unexpected matched tasks.")
-            dataWithTasks
-        }
-      }
+  private[this] def processAddedTasks(offerId: OfferID, addedTasks: Seq[TaskWithSource], data: OfferData): OfferData = {
+    val dataWithTasks = try {
+      val (launchTasks, rejectedTasks) =
+        addedTasks.splitAt(Seq(launchTokens, addedTasks.size, conf.maxTasksPerOffer() - data.tasks.size).min)
 
-      offerQueues.get(offerId) match {
-        case Some(data) =>
-          val nextData = processAddedTasks(data.copy(matchPasses = data.matchPasses + 1))
-          scheduleNextMatcherOrFinish(nextData)
+      rejectedTasks.foreach(_.reject("not enough launch tokens OR already scheduled sufficient tasks on offer"))
 
-        case None =>
-          addedTasks.foreach(_.reject(s"offer '${offerId.getValue}' already timed out"))
-      }
+      val newData: OfferData = data.addTasks(launchTasks)
+      launchTokens -= launchTasks.size
+      newData
+    }
+    catch {
+      case NonFatal(e) =>
+        log.error(s"unexpected error processing tasks for ${offerId.getValue} from ${sender()}", e)
+        data
+    }
+
+    dataWithTasks.nextMatcherOpt match {
+      case Some((matcher, contData)) =>
+        val contDataWithActiveMatcher =
+          if (addedTasks.nonEmpty) contData.addMatcher(matcher)
+          else contData
+        offerQueues += offerId -> contDataWithActiveMatcher
+        contDataWithActiveMatcher
+      case None =>
+        log.warning("Got unexpected matched tasks.")
+        dataWithTasks
+    }
   }
 
   private[this] def scheduleNextMatcherOrFinish(data: OfferData): Unit = {
@@ -210,7 +213,7 @@ private class OfferMatcherManagerActor private (
           .recover {
             case NonFatal(e) =>
               log.warning("Received error from {}", e)
-              MatchedTasks(data.offer.getId, Seq.empty)
+              NoMatchedTasks(data.offer.getId, useDefaultFilter = true)
           }.pipeTo(self)
       case None =>
         data.sender ! OfferMatcher.MatchedTasks(data.offer.getId, data.tasks)

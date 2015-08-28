@@ -4,14 +4,15 @@ import java.util
 import java.util.Collections
 
 import mesosphere.marathon.core.base.ConstantClock
-import mesosphere.marathon.{ MarathonTestHelper, MarathonSchedulerDriverHolder, MarathonSpec }
 import mesosphere.marathon.core.launcher.TaskLauncher
+import mesosphere.marathon.{ MarathonSchedulerDriverHolder, MarathonSpec, MarathonTestHelper }
+import mesosphere.mesos.protos.Implicits._
 import mesosphere.mesos.protos.OfferID
 import org.apache.mesos.Protos.TaskInfo
 import org.apache.mesos.{ Protos, SchedulerDriver }
-import org.mockito.Mockito
-import org.mockito.Mockito.{ when, verify }
-import mesosphere.mesos.protos.Implicits._
+import org.mockito.Mockito.{ verify, when }
+import org.mockito.{ Matchers, Mockito }
+
 import scala.collection.JavaConverters._
 
 class TaskLauncherImplTest extends MarathonSpec {
@@ -53,7 +54,7 @@ class TaskLauncherImplTest extends MarathonSpec {
   test("declineOffer with driver") {
     launcher.declineOffer(offerId)
 
-    verify(driverHolder.driver.get).declineOffer(offerId)
+    verify(driverHolder.driver.get).declineOffer(Matchers.eq(offerId), Matchers.any[Protos.Filters])
   }
 
   var driverHolder: MarathonSchedulerDriverHolder = _

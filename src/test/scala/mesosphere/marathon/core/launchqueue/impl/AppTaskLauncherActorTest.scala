@@ -1,33 +1,32 @@
 package mesosphere.marathon.core.launchqueue.impl
 
-import akka.actor.{ Terminated, Cancellable, ActorContext, Props, ActorRef, ActorSystem }
+import akka.actor.{ ActorContext, ActorRef, ActorSystem, Cancellable, Props, Terminated }
+import akka.pattern.ask
 import akka.testkit.TestProbe
 import akka.util.Timeout
-import mesosphere.marathon.Protos.{ Constraint, MarathonTask }
+import mesosphere.marathon.Protos.MarathonTask
 import mesosphere.marathon.core.base.ConstantClock
 import mesosphere.marathon.core.flow.OfferReviver
 import mesosphere.marathon.core.launchqueue.LaunchQueue.QueuedTaskCount
 import mesosphere.marathon.core.launchqueue.LaunchQueueConfig
-import mesosphere.marathon.core.matcher.base.OfferMatcher
-import OfferMatcher.MatchedTasks
-import mesosphere.marathon.core.matcher.manager.OfferMatcherManager
+import mesosphere.marathon.core.matcher.base.OfferMatcher.{ MatchedTasks, WithMatchedTasks }
+import mesosphere.marathon.core.matcher.base.util.ActorOfferMatcher
 import mesosphere.marathon.core.matcher.base.util.TaskLaunchSourceDelegate.TaskLaunchRejected
-import mesosphere.marathon.core.matcher.base.util.{ TaskLaunchSourceDelegate, ActorOfferMatcher }
-import mesosphere.marathon.core.task.bus.{ TaskStatusUpdateTestHelper, TaskStatusObservables }
+import mesosphere.marathon.core.matcher.manager.OfferMatcherManager
 import mesosphere.marathon.core.task.bus.TaskStatusObservables.TaskStatusUpdate
-import mesosphere.marathon.integration.setup.WaitTestSupport
+import mesosphere.marathon.core.task.bus.{ TaskStatusObservables, TaskStatusUpdateTestHelper }
 import mesosphere.marathon.state.{ AppDefinition, PathId }
 import mesosphere.marathon.tasks.TaskFactory.CreatedTask
 import mesosphere.marathon.tasks.{ TaskFactory, TaskTracker }
-import mesosphere.marathon.{ Protos, MarathonSpec, MarathonTestHelper }
+import mesosphere.marathon.{ MarathonSpec, MarathonTestHelper, Protos }
 import mesosphere.util.state.PersistentEntity
 import org.mockito.Mockito
 import org.scalatest.GivenWhenThen
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
-import scala.concurrent.{ Future, Await }
+
 import scala.concurrent.duration._
-import akka.pattern.ask
+import scala.concurrent.{ Await, Future }
 
 /**
   * Also check LaunchQueueModuleTest which tests the interplay of the AppTaskLauncherActor
@@ -91,7 +90,7 @@ class AppTaskLauncherActorTest extends MarathonSpec with GivenWhenThen {
     launcherRef ! RateLimiterActor.DelayUpdate(app, clock.now())
 
     val matched =
-      Await.result(launcherRef ? ActorOfferMatcher.MatchOffer(clock.now() + 1.seconds, offer), 3.seconds).asInstanceOf[MatchedTasks]
+      Await.result(launcherRef ? ActorOfferMatcher.MatchOffer(clock.now() + 1.seconds, offer), 3.seconds).asInstanceOf[WithMatchedTasks]
 
     val testProbe = TestProbe()
     testProbe.watch(launcherRef)
@@ -120,7 +119,7 @@ class AppTaskLauncherActorTest extends MarathonSpec with GivenWhenThen {
     val matchedTasks =
       Await
         .result(launcherRef ? ActorOfferMatcher.MatchOffer(clock.now() + 1.seconds, offer), 3.seconds)
-        .asInstanceOf[MatchedTasks]
+        .asInstanceOf[WithMatchedTasks]
     matchedTasks.tasks.foreach(_.reject("stuff"))
 
     val counts = Await.result(launcherRef ? AppTaskLauncherActor.GetCount, 3.seconds).asInstanceOf[QueuedTaskCount]
@@ -194,7 +193,7 @@ class AppTaskLauncherActorTest extends MarathonSpec with GivenWhenThen {
     val matchedTasks =
       Await
         .result(launcherRef ? ActorOfferMatcher.MatchOffer(clock.now() + 1.seconds, offer), 3.seconds)
-        .asInstanceOf[MatchedTasks]
+        .asInstanceOf[WithMatchedTasks]
     matchedTasks.tasks.foreach(_.accept())
 
     val counts = Await.result(launcherRef ? AppTaskLauncherActor.GetCount, 3.seconds).asInstanceOf[QueuedTaskCount]
