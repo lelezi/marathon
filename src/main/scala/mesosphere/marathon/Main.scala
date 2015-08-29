@@ -94,3 +94,4 @@ class MarathonApp extends App {
 object Main extends MarathonApp {
   runDefault()
 }
+
