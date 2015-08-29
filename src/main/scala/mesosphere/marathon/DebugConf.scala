@@ -9,7 +9,6 @@ import org.aopalliance.intercept.{ MethodInterceptor, MethodInvocation }
 import org.apache.log4j.{ Level, Logger }
 import org.rogach.scallop.ScallopConf
 
-
 /**
   * Options related to debugging marathon.
   * All options should be optional and turned off by default.
