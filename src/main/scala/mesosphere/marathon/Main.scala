@@ -18,6 +18,8 @@ import scala.collection.JavaConverters._
 class MarathonApp extends App {
   val log = Logger.getLogger(getClass.getName)
 
+  log.info("lelezi: main begin!")
+
   lazy val zk: ZooKeeperClient = {
     require(
       conf.zooKeeperTimeout() < Integer.MAX_VALUE,
