@@ -1,5 +1,6 @@
 package mesosphere.marathon
 
+import java.lang.Thread.dumpStack
 import java.util.concurrent.TimeoutException
 
 import akka.actor._
@@ -512,8 +513,7 @@ class SchedulerActions(
 
       // lzc
       {
-        Exception e = new Exception("this is a log")
-        e.printStackTrace()
+        dumpStack()
       }
 
       val queuedOrRunning = taskQueue.get(app.id).map(_.totalTaskCount).getOrElse(currentCount)
