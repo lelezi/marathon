@@ -510,6 +510,12 @@ class SchedulerActions(
     if (targetCount > currentCount) {
       log.info(s"Need to scale ${app.id} from $currentCount up to $targetCount instances")
 
+      // lzc
+      {
+        Exception e = new Exception("this is a log")
+        e.printStackTrace()
+      }
+
       val queuedOrRunning = taskQueue.get(app.id).map(_.totalTaskCount).getOrElse(currentCount)
       val toQueue = targetCount - queuedOrRunning
 
