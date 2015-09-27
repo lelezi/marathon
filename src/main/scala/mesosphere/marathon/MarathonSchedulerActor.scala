@@ -112,6 +112,7 @@ class MarathonSchedulerActor private (
     case ScaleApps => schedulerActions.scaleApps()
 
     case cmd @ ScaleApp(appId) =>
+      log.info("lelezi: schueduler actor scale app !")
       val origSender = sender()
       withLockFor(appId) {
         val res = schedulerActions.scale(driver, appId)
