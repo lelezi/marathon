@@ -152,11 +152,11 @@ class GroupManager @Singleton @Inject() (
 
     val deployment = for {
       from <- rootGroup()
-      _ <- log.info(s"lelezi: group from = " + from)
+      _ <- log.info("lelezi: group from = " + from)
       (to, resolve) <- resolveStoreUrls(assignDynamicServicePorts(from, change(from)))
       _ = BeanValidation.requireValid(ModelValidation.checkGroup(to, "", PathId.empty))
       plan = DeploymentPlan(from, to, resolve, version, toKill)
-      _ <- log.info(s"lelezi: plan target = " + plan.target)
+      _ <- log.info("lelezi: plan target = " + plan.target)
       _ <- scheduler.deploy(plan, force)
       _ <- storeUpdatedApps(plan)
       _ <- groupRepo.store(zkName, plan.target)
