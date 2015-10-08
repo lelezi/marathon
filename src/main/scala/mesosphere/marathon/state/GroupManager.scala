@@ -156,7 +156,7 @@ class GroupManager @Singleton @Inject() (
       (to, resolve) <- resolveStoreUrls(assignDynamicServicePorts(from, change(from)))
       _ = BeanValidation.requireValid(ModelValidation.checkGroup(to, "", PathId.empty))
       plan = DeploymentPlan(from, to, resolve, version, toKill)
-      _ <- log.info(s"lelezi: plan target")
+      log.info(s"lelezi: plan target")
       _ <- scheduler.deploy(plan, force)
       _ <- storeUpdatedApps(plan)
       _ <- groupRepo.store(zkName, plan.target)
