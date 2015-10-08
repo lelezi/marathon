@@ -10,7 +10,7 @@ import org.jgrapht.graph._
 import scala.collection.JavaConversions._
 
 import org.apache.log4j.Logger
-importjava.lang.Thread.dumpStack
+import java.lang.Thread.dumpStack
 
 case class Group(
     id: PathId,
