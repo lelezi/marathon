@@ -10,6 +10,7 @@ import org.jgrapht.graph._
 import scala.collection.JavaConversions._
 
 import org.apache.log4j.Logger
+importjava.lang.Thread.dumpStack
 
 case class Group(
     id: PathId,
@@ -54,6 +55,7 @@ case class Group(
     log.info(s"\n\nlelezi: update app, path id = [${path}] \n\n")
     val groupId = path.parent
     log.info(s"\n\nlelezi: update app, group id = [${groupId}] \n\n")
+    dumpStack()
     makeGroup(groupId).update(timestamp) { group =>
       if (group.id == groupId) group.putApplication(fn(group.apps.find(_.id == path))) else group
     }
