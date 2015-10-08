@@ -159,8 +159,6 @@ class GroupManager @Singleton @Inject() (
       _ <- scheduler.deploy(plan, force)
       _ <- storeUpdatedApps(plan)
       _ <- groupRepo.store(zkName, plan.target)
-      if(1)
-        log.info(s"lelezi: plan target")
     } yield plan
 
     deployment.onComplete {
@@ -200,6 +198,7 @@ class GroupManager @Singleton @Inject() (
 
   //scalastyle:off method.length
   private[state] def assignDynamicServicePorts(from: Group, to: Group): Group = {
+    log.info(s"lelezi: to group = [${to}]")
     val portRange = Range(config.localPortMin(), config.localPortMax())
     var taken = from.transitiveApps.flatMap(_.ports)
 
