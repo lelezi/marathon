@@ -149,8 +149,7 @@ class GroupManager @Singleton @Inject() (
         }
       }
     }
-// _ <- log.info(s"lelezi: group from = [${from}]")
-    //_ <- log.info(s"lelezi: plan target = [${plan.target}}]")
+
     val deployment = for {
       from <- rootGroup()
       (to, resolve) <- resolveStoreUrls(assignDynamicServicePorts(from, change(from)))
