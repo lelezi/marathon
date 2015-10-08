@@ -9,12 +9,16 @@ import org.jgrapht.graph._
 
 import scala.collection.JavaConversions._
 
+import org.apache.log4j.Logger
+
 case class Group(
     id: PathId,
     apps: Set[AppDefinition] = defaultApps,
     groups: Set[Group] = defaultGroups,
     dependencies: Set[PathId] = defaultDependencies,
     version: Timestamp = defaultVersion) extends MarathonState[GroupDefinition, Group] {
+
+  private[this] val log = Logger.getLogger(getClass.getName)
 
   override def mergeFromProto(msg: GroupDefinition): Group = Group.fromProto(msg)
   override def mergeFromProto(bytes: Array[Byte]): Group = Group.fromProto(GroupDefinition.parseFrom(bytes))
